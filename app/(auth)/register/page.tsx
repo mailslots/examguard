@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card, CardContent } from '@/components/ui/Card'
+import { GoogleButton } from '@/components/ui/GoogleButton'
 import type { Role } from '@/types'
 
 function RegisterForm() {
@@ -49,6 +50,12 @@ function RegisterForm() {
       </div>
       <Card>
         <CardContent className="py-6">
+          <GoogleButton label="Sign up with Google" />
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-xs text-gray-400 font-medium">or</span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
           {/* Role selector */}
           <div className="flex rounded-xl overflow-hidden border border-gray-200 mb-5">
             {(['student', 'admin'] as Role[]).map(r => (

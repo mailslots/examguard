@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card, CardContent } from '@/components/ui/Card'
+import { GoogleButton } from '@/components/ui/GoogleButton'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -40,6 +41,12 @@ export default function LoginPage() {
       </div>
       <Card>
         <CardContent className="py-6">
+          <GoogleButton label="Sign in with Google" />
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-xs text-gray-400 font-medium">or</span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
           <form onSubmit={handleLogin} className="space-y-4">
             <Input
               label="Email"
