@@ -7,40 +7,40 @@ import { Clock } from 'lucide-react'
 interface TimerProps {
   durationMinutes: number
   startedAt: string
+  endAt?: string | null
   onTimeUp: () => void
 }
 
-export function Timer({ durationMinutes, startedAt, onTimeUp }: TimerProps) {
-  const totalSeconds = durationMinutes * 60
-  const elapsed = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
-  const [secondsLeft, setSecondsLeft] = useState(Math.max(0, totalSeconds - elapsed))
+export function Timer({ durationMinutes, startedAt, endAt, onTimeUp }: TimerProps) {
+  const durationDeadline = new Date(startedAt).getTime() + durationMinutes * 60_000
+  const effectiveDeadline = endAt
+    ? Math.min(durationDeadline, new Date(endAt).getTime())
+    : durationDeadline
+  const totalRef = Math.max(1, Math.floor((effectiveDeadline - new Date(startedAt).getTime()) / 1000))
+
+  const [secondsLeft, setSecondsLeft] = useState(() =>
+    Math.max(0, Math.floor((effectiveDeadline - Date.now()) / 1000))
+  )
   const calledTimeUp = useRef(false)
 
   useEffect(() => {
     if (secondsLeft <= 0) {
-      if (!calledTimeUp.current) {
-        calledTimeUp.current = true
-        onTimeUp()
-      }
+      if (!calledTimeUp.current) { calledTimeUp.current = true; onTimeUp() }
       return
     }
     const id = setInterval(() => {
-      setSecondsLeft(s => {
-        if (s <= 1) {
-          clearInterval(id)
-          if (!calledTimeUp.current) {
-            calledTimeUp.current = true
-            onTimeUp()
-          }
-          return 0
-        }
-        return s - 1
-      })
+      const remaining = Math.max(0, Math.floor((effectiveDeadline - Date.now()) / 1000))
+      setSecondsLeft(remaining)
+      if (remaining <= 0 && !calledTimeUp.current) {
+        calledTimeUp.current = true
+        clearInterval(id)
+        onTimeUp()
+      }
     }, 1000)
     return () => clearInterval(id)
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const pct = secondsLeft / totalSeconds
+  const pct = secondsLeft / totalRef
   const urgent = pct <= 0.1
   const warning = pct <= 0.25
 

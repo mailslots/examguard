@@ -267,10 +267,19 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Caption */}
-          <p className="text-center text-sm text-gray-400 mt-4 flex items-center justify-center gap-2">
-            <CheckCircle2 size={14} className="text-green-500" />
-            Fullscreen mode · Copy &amp; paste disabled · Timer running · All violations logged
+          {/* Demo CTA */}
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              href="/demo"
+              className="inline-flex items-center gap-2 bg-blue-600 text-white font-semibold px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors text-sm shadow-md"
+            >
+              <ShieldCheck size={16} /> Try Interactive Demo — Anti-Cheat Live
+            </Link>
+            <p className="text-xs text-gray-400">No account needed · 5 questions · All features active</p>
+          </div>
+          <p className="text-center text-xs text-gray-400 mt-3 flex items-center justify-center gap-2">
+            <CheckCircle2 size={13} className="text-green-500" />
+            Fullscreen · Copy &amp; paste disabled · Tab-switch detection · Violation log
           </p>
         </div>
       </section>

@@ -36,6 +36,8 @@ export interface Exam {
   max_warnings: number
   is_published: boolean
   shuffle_questions: boolean
+  start_at?: string | null
+  end_at?: string | null
   created_at: string
   classes?: Pick<Class, 'name'>
   _count?: { questions: number }

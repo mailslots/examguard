@@ -9,12 +9,15 @@ import { QuestionRenderer } from '@/components/exam/QuestionRenderer'
 import { Timer } from '@/components/exam/Timer'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { formatDuration, cheatEventLabel } from '@/lib/utils'
-import { ShieldCheck, AlertTriangle, Maximize2, CheckCircle } from 'lucide-react'
+import { formatDuration, cheatEventLabel, formatDate } from '@/lib/utils'
+import { ShieldCheck, AlertTriangle, Maximize2, CheckCircle, Clock } from 'lucide-react'
 
 type ExamWithQuestions = Exam & { questions: Question[] }
+type Phase = 'loading' | 'not_started' | 'ended' | 'instructions' | 'exam' | 'submitting' | 'done'
 
-type Phase = 'loading' | 'instructions' | 'exam' | 'submitting' | 'done'
+const CACHE_TTL = 30 * 60 * 1000 // 30 minutes
+
+function cacheKey(id: string) { return `exaon_attempt_${id}` }
 
 export default function ExamPage() {
   const params = useParams()
@@ -29,7 +32,13 @@ export default function ExamPage() {
   const [answers, setAnswers] = useState<Record<string, Partial<Answer>>>({})
   const [warning, setWarning] = useState<{ count: number; type: CheatEventType } | null>(null)
   const [autoSubmitModal, setAutoSubmitModal] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const submitting = useRef(false)
+  const answersRef = useRef<Record<string, Partial<Answer>>>({})
+  const dirtyRef = useRef(false)
+
+  // Keep answersRef in sync for the flush callback
+  useEffect(() => { answersRef.current = answers }, [answers])
 
   // Load exam and create/resume attempt
   useEffect(() => {
@@ -45,15 +54,25 @@ export default function ExamPage() {
 
       if (!examData) { router.push('/student/dashboard'); return }
 
-      // Sort questions by order_index
+      // Schedule enforcement
+      const now = Date.now()
+      if (examData.start_at && now < new Date(examData.start_at).getTime()) {
+        setExam(examData as ExamWithQuestions)
+        setPhase('not_started')
+        return
+      }
+      if (examData.end_at && now > new Date(examData.end_at).getTime()) {
+        setExam(examData as ExamWithQuestions)
+        setPhase('ended')
+        return
+      }
+
       examData.questions = (examData.questions ?? []).sort((a: Question, b: Question) => a.order_index - b.order_index)
       if (examData.shuffle_questions) {
         examData.questions = examData.questions.sort(() => Math.random() - 0.5)
       }
-
       setExam(examData as ExamWithQuestions)
 
-      // Check for existing attempt
       const { data: existing } = await supabase
         .from('exam_attempts')
         .select('*')
@@ -69,7 +88,7 @@ export default function ExamPage() {
         setAttemptId(existing.id)
         setStartedAt(existing.started_at)
 
-        // Load existing answers
+        // Load server answers
         const { data: savedAnswers } = await supabase
           .from('answers')
           .select('*')
@@ -77,6 +96,21 @@ export default function ExamPage() {
 
         const answerMap: Record<string, Partial<Answer>> = {}
         savedAnswers?.forEach(a => { answerMap[a.question_id] = a })
+
+        // Merge with localStorage cache (if fresh)
+        try {
+          const cached = localStorage.getItem(cacheKey(existing.id))
+          if (cached) {
+            const { savedAt, answers: local } = JSON.parse(cached) as { savedAt: number; answers: Record<string, Partial<Answer>> }
+            if (Date.now() - savedAt < CACHE_TTL) {
+              Object.assign(answerMap, local)
+            } else {
+              localStorage.removeItem(cacheKey(existing.id))
+            }
+          }
+        } catch {}
+
+        answersRef.current = answerMap
         setAnswers(answerMap)
         setPhase('exam')
       } else {
@@ -84,7 +118,7 @@ export default function ExamPage() {
       }
     }
     init()
-  }, [examId])
+  }, [examId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const startExam = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -100,63 +134,85 @@ export default function ExamPage() {
     }
   }, [examId, supabase])
 
+  // Flush dirty answers to server
+  const flushToServer = useCallback(async () => {
+    if (!dirtyRef.current || !attemptId) return
+    dirtyRef.current = false
+    const inserts = Object.entries(answersRef.current).map(([qid, ans]) => ({
+      attempt_id: attemptId,
+      question_id: qid,
+      selected_option_id: ans.selected_option_id ?? null,
+      text_answer: ans.text_answer ?? null,
+      updated_at: new Date().toISOString(),
+    }))
+    if (inserts.length > 0) {
+      await supabase.from('answers').upsert(inserts, { onConflict: 'attempt_id,question_id' })
+      setLastSaved(new Date())
+    }
+  }, [attemptId, supabase])
+
+  // Periodic 30s flush
+  useEffect(() => {
+    if (!attemptId) return
+    const id = setInterval(flushToServer, 30_000)
+    return () => clearInterval(id)
+  }, [attemptId, flushToServer])
+
+  // Flush before page unload
+  useEffect(() => {
+    window.addEventListener('beforeunload', flushToServer)
+    return () => window.removeEventListener('beforeunload', flushToServer)
+  }, [flushToServer])
+
   const submitExam = useCallback(async (auto = false) => {
     if (submitting.current || !attemptId) return
     submitting.current = true
     setPhase('submitting')
 
-    // Calculate score for MCQ
+    // Flush local cache to server first
+    dirtyRef.current = true
+    await flushToServer()
+
     let score = 0
     let maxScore = 0
-    const answerInserts: object[] = []
 
     exam?.questions.forEach(q => {
       maxScore += q.points
-      const userAnswer = answers[q.id]
-      let isCorrect: boolean | null = null
-      let pointsEarned = 0
-
+      const userAnswer = answersRef.current[q.id]
       if (q.type === 'mcq' && userAnswer?.selected_option_id) {
         const correct = q.question_options?.find(o => o.is_correct)
-        isCorrect = correct?.id === userAnswer.selected_option_id
-        pointsEarned = isCorrect ? q.points : 0
-        score += pointsEarned
+        const isCorrect = correct?.id === userAnswer.selected_option_id
+        score += isCorrect ? q.points : 0
       }
-
-      answerInserts.push({
-        attempt_id: attemptId,
-        question_id: q.id,
-        selected_option_id: userAnswer?.selected_option_id ?? null,
-        text_answer: userAnswer?.text_answer ?? null,
-        is_correct: isCorrect,
-        points_earned: pointsEarned,
-      })
     })
 
-    await Promise.allSettled([
-      supabase.from('answers').upsert(answerInserts, { onConflict: 'attempt_id,question_id' }),
-      supabase.from('exam_attempts').update({
-        status: auto ? 'auto_submitted' : 'submitted',
-        submitted_at: new Date().toISOString(),
-        score,
-        max_score: maxScore,
-      }).eq('id', attemptId),
-    ])
+    await supabase.from('exam_attempts').update({
+      status: auto ? 'auto_submitted' : 'submitted',
+      submitted_at: new Date().toISOString(),
+      score,
+      max_score: maxScore,
+    }).eq('id', attemptId)
+
+    // Clear local cache
+    try { localStorage.removeItem(cacheKey(attemptId)) } catch {}
 
     router.push(`/exam/${examId}/complete`)
-  }, [attemptId, exam, answers, examId, router, supabase])
+  }, [attemptId, exam, examId, flushToServer, router, supabase])
 
-  const saveAnswer = useCallback(async (questionId: string, update: Partial<Answer>) => {
-    setAnswers(prev => ({ ...prev, [questionId]: { ...prev[questionId], ...update } }))
-    if (attemptId) {
-      await supabase.from('answers').upsert({
-        attempt_id: attemptId,
-        question_id: questionId,
-        ...update,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'attempt_id,question_id' })
-    }
-  }, [attemptId, supabase])
+  // Save answer: update state + localStorage immediately, flush to server on interval
+  const saveAnswer = useCallback((questionId: string, update: Partial<Answer>) => {
+    setAnswers(prev => {
+      const next = { ...prev, [questionId]: { ...prev[questionId], ...update } }
+      answersRef.current = next
+      dirtyRef.current = true
+      if (attemptId) {
+        try {
+          localStorage.setItem(cacheKey(attemptId), JSON.stringify({ savedAt: Date.now(), answers: next }))
+        } catch {}
+      }
+      return next
+    })
+  }, [attemptId])
 
   const { requestFullscreen } = useAntiCheat({
     attemptId,
@@ -174,6 +230,50 @@ export default function ExamPage() {
     )
   }
 
+  // Not started yet
+  if (phase === 'not_started' && exam) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 max-w-sm w-full p-8 text-center">
+          <Clock size={40} className="text-blue-400 mx-auto mb-4" />
+          <h1 className="text-xl font-bold text-gray-900 mb-2">{exam.title}</h1>
+          <p className="text-gray-500 text-sm mb-4">This exam hasn&apos;t started yet.</p>
+          {exam.start_at && (
+            <div className="bg-blue-50 rounded-xl px-4 py-3 text-sm text-blue-700">
+              Available from<br />
+              <span className="font-semibold">{new Date(exam.start_at).toLocaleString()}</span>
+            </div>
+          )}
+          <Button className="mt-6 w-full" variant="outline" onClick={() => router.push('/student/dashboard')}>
+            Back to Dashboard
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Ended
+  if (phase === 'ended' && exam) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 max-w-sm w-full p-8 text-center">
+          <AlertTriangle size={40} className="text-orange-400 mx-auto mb-4" />
+          <h1 className="text-xl font-bold text-gray-900 mb-2">{exam.title}</h1>
+          <p className="text-gray-500 text-sm mb-4">The submission window for this exam has closed.</p>
+          {exam.end_at && (
+            <div className="bg-orange-50 rounded-xl px-4 py-3 text-sm text-orange-700">
+              Closed on<br />
+              <span className="font-semibold">{new Date(exam.end_at).toLocaleString()}</span>
+            </div>
+          )}
+          <Button className="mt-6 w-full" variant="outline" onClick={() => router.push('/student/dashboard')}>
+            Back to Dashboard
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   // Instructions screen
   if (phase === 'instructions' && exam) {
     return (
@@ -185,7 +285,10 @@ export default function ExamPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900">{exam.title}</h1>
-              <p className="text-sm text-gray-500">{formatDuration(exam.duration_minutes)} · {exam.questions.length} questions</p>
+              <p className="text-sm text-gray-500">
+                {formatDuration(exam.duration_minutes)} · {exam.questions.length} questions
+                {exam.end_at && ` · Deadline: ${new Date(exam.end_at).toLocaleString()}`}
+              </p>
             </div>
           </div>
 
@@ -211,10 +314,7 @@ export default function ExamPage() {
           <Button
             className="w-full"
             size="lg"
-            onClick={() => {
-              requestFullscreen()
-              startExam()
-            }}
+            onClick={() => { requestFullscreen(); startExam() }}
           >
             <Maximize2 size={16} /> Enter Exam (Fullscreen)
           </Button>
@@ -223,7 +323,6 @@ export default function ExamPage() {
     )
   }
 
-  // Submitting
   if (phase === 'submitting') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -257,7 +356,14 @@ export default function ExamPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {startedAt && <Timer durationMinutes={exam.duration_minutes} startedAt={startedAt} onTimeUp={() => submitExam(true)} />}
+            {startedAt && (
+              <Timer
+                durationMinutes={exam.duration_minutes}
+                startedAt={startedAt}
+                endAt={exam.end_at}
+                onTimeUp={() => submitExam(true)}
+              />
+            )}
             <Button size="sm" onClick={() => submitExam(false)} variant="primary">Submit</Button>
           </div>
         </div>
@@ -280,6 +386,9 @@ export default function ExamPage() {
           <Button className="w-full" size="lg" onClick={() => submitExam(false)}>
             <CheckCircle size={16} /> Submit Exam
           </Button>
+          {lastSaved && (
+            <p className="text-center text-xs text-gray-400">Last synced {formatDate(lastSaved.toISOString())}</p>
+          )}
         </div>
 
         {/* Question navigator */}
