@@ -2,24 +2,19 @@
 
 import { useState, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card, CardContent } from '@/components/ui/Card'
 import { GoogleButton } from '@/components/ui/GoogleButton'
-import type { Role } from '@/types'
+import { Mail } from 'lucide-react'
 
 function RegisterForm() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const supabase = createClient()
-  const [form, setForm] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    role: (searchParams.get('role') ?? 'student') as Role,
-  })
+  const [showTeacherInfo, setShowTeacherInfo] = useState(false)
+  const [form, setForm] = useState({ fullName: '', email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -32,11 +27,10 @@ function RegisterForm() {
       const { error: authError } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
-        options: { data: { full_name: form.fullName, role: form.role } },
+        options: { data: { full_name: form.fullName, role: 'student' } },
       })
       if (authError) { setError(authError.message); return }
-      if (form.role === 'admin') router.push('/admin')
-      else router.push('/student/dashboard')
+      router.push('/student/dashboard')
     } finally {
       setLoading(false)
     }
@@ -46,8 +40,9 @@ function RegisterForm() {
     <div className="w-full max-w-sm">
       <div className="text-center mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Create account</h1>
-        <p className="text-gray-500 mt-1 text-sm">Join Exaon today</p>
+        <p className="text-gray-500 mt-1 text-sm">Join Exaon as a student</p>
       </div>
+
       <Card>
         <CardContent className="py-6">
           <GoogleButton label="Sign up with Google" />
@@ -55,19 +50,6 @@ function RegisterForm() {
             <div className="flex-1 h-px bg-gray-200" />
             <span className="text-xs text-gray-400 font-medium">or</span>
             <div className="flex-1 h-px bg-gray-200" />
-          </div>
-          {/* Role selector */}
-          <div className="flex rounded-xl overflow-hidden border border-gray-200 mb-5">
-            {(['student', 'admin'] as Role[]).map(r => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setForm(f => ({ ...f, role: r }))}
-                className={`flex-1 py-2.5 text-sm font-medium transition-colors capitalize ${form.role === r ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
-              >
-                {r === 'admin' ? 'Teacher' : 'Student'}
-              </button>
-            ))}
           </div>
 
           <form onSubmit={handleRegister} className="space-y-4">
@@ -104,12 +86,37 @@ function RegisterForm() {
               </div>
             )}
             <Button type="submit" loading={loading} className="w-full" size="lg">
-              Create Account
+              Create Student Account
             </Button>
           </form>
         </CardContent>
       </Card>
-      <p className="text-center text-sm text-gray-500 mt-6">
+
+      {/* Teacher account info */}
+      <div className="mt-4">
+        <button
+          type="button"
+          onClick={() => setShowTeacherInfo(v => !v)}
+          className="w-full text-center text-sm text-gray-500 hover:text-blue-600 transition-colors py-2"
+        >
+          Are you a teacher?
+        </button>
+        {showTeacherInfo && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mt-2 text-center">
+            <p className="text-sm text-blue-800 font-medium mb-1">Teacher accounts are by invitation only</p>
+            <p className="text-sm text-blue-600 mb-3">Contact the platform administrator to request access.</p>
+            <a
+              href="mailto:mailslots@gmail.com"
+              className="inline-flex items-center gap-2 bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Mail size={14} />
+              Contact Phubet Chitapanya
+            </a>
+          </div>
+        )}
+      </div>
+
+      <p className="text-center text-sm text-gray-500 mt-4">
         Already have an account?{' '}
         <Link href="/login" className="text-blue-600 font-medium hover:underline">Sign in</Link>
       </p>

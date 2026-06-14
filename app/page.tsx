@@ -62,12 +62,12 @@ export default function LandingPage() {
             Replace Google Forms with a platform built for integrity. Detect cheating in real time — tab switches, copy attempts, and more — automatically.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/register?role=admin" className="inline-flex items-center justify-center gap-2 bg-blue-600 text-white font-medium px-8 py-3.5 rounded-xl hover:bg-blue-700 transition-colors text-base">
-              Start as Teacher
+            <Link href="/register" className="inline-flex items-center justify-center gap-2 bg-blue-600 text-white font-medium px-8 py-3.5 rounded-xl hover:bg-blue-700 transition-colors text-base">
+              Get Started — It&apos;s Free
             </Link>
-            <Link href="/register?role=student" className="inline-flex items-center justify-center gap-2 bg-white text-gray-700 font-medium px-8 py-3.5 rounded-xl border border-gray-300 hover:bg-gray-50 transition-colors text-base">
-              Join as Student
-            </Link>
+            <a href="mailto:mailslots@gmail.com" className="inline-flex items-center justify-center gap-2 bg-white text-gray-700 font-medium px-8 py-3.5 rounded-xl border border-gray-300 hover:bg-gray-50 transition-colors text-base">
+              Teacher? Contact us
+            </a>
           </div>
         </div>
       </section>
@@ -103,9 +103,9 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
-              <Link href="/register?role=admin" className="mt-7 inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700">
-                Create teacher account <ChevronRight size={15} />
-              </Link>
+              <a href="mailto:mailslots@gmail.com" className="mt-7 inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700">
+                Request teacher access <ChevronRight size={15} />
+              </a>
             </div>
 
             {/* Student flow */}
@@ -301,8 +301,8 @@ export default function LandingPage() {
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl font-bold text-white mb-4">Ready to run your first secure exam?</h2>
           <p className="text-blue-100 text-lg mb-8">Create a class, add your questions, and share the invite link with students.</p>
-          <Link href="/register?role=admin" className="inline-flex items-center gap-2 bg-white text-blue-600 font-semibold px-8 py-3.5 rounded-xl hover:bg-blue-50 transition-colors text-base">
-            Create Free Account
+          <Link href="/register" className="inline-flex items-center gap-2 bg-white text-blue-600 font-semibold px-8 py-3.5 rounded-xl hover:bg-blue-50 transition-colors text-base">
+            Create Free Student Account
           </Link>
         </div>
       </section>
@@ -316,7 +316,7 @@ export default function LandingPage() {
             </div>
             <span className="text-sm font-semibold text-gray-700">Exaon</span>
           </div>
-          <p className="text-xs text-gray-400">© {new Date().getFullYear()} Exaon. Built for academic integrity.</p>
+          <p className="text-xs text-gray-400">© {new Date().getFullYear()} Exaon. Built for academic integrity. Created by <span className="font-medium text-gray-500">Phubet Chitapanya</span>.</p>
         </div>
       </footer>
     </div>
