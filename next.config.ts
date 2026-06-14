@@ -4,9 +4,6 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [{ protocol: 'https', hostname: '**' }],
   },
-  eslint: {
-    ignoreDuringBuilds: false,
-  },
 }
 
 export default nextConfig
