@@ -20,7 +20,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
             <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
               <ShieldCheck size={15} className="text-white" />
             </div>
-            <span className="font-bold text-gray-900">ExamGuard</span>
+            <span className="font-bold text-gray-900">Exaon</span>
           </Link>
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-500 hidden sm:block">{profile?.full_name}</span>

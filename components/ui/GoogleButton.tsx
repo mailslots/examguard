@@ -3,17 +3,22 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-export function GoogleButton({ label = 'Continue with Google' }: { label?: string }) {
+interface GoogleButtonProps {
+  label?: string
+  next?: string
+}
+
+export function GoogleButton({ label = 'Continue with Google', next }: GoogleButtonProps) {
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
 
   const handleGoogleLogin = async () => {
     setLoading(true)
+    const callbackUrl = new URL(`${window.location.origin}/auth/callback`)
+    if (next) callbackUrl.searchParams.set('next', next)
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { redirectTo: callbackUrl.toString() },
     })
   }
 

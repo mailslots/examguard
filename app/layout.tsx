@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'ExamGuard — Secure Online Exams',
+  title: 'Exaon — Secure Online Exams',
   description: 'A secure exam platform with anti-cheat detection for educators and students.',
 }
 

@@ -9,7 +9,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
             <ShieldCheck size={18} className="text-white" />
           </div>
-          <span className="font-bold text-gray-900 text-xl">ExamGuard</span>
+          <span className="font-bold text-gray-900 text-xl">Exaon</span>
         </Link>
       </header>
       <main className="flex-1 flex items-center justify-center px-4 py-8">{children}</main>

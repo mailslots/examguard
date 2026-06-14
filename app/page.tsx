@@ -20,7 +20,7 @@ export default function LandingPage() {
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <ShieldCheck size={18} className="text-white" />
             </div>
-            <span className="font-bold text-gray-900 text-xl">ExamGuard</span>
+            <span className="font-bold text-gray-900 text-xl">Exaon</span>
           </Link>
           <div className="flex items-center gap-3">
             <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-blue-600 px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors">
@@ -97,9 +97,9 @@ export default function LandingPage() {
             <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center">
               <ShieldCheck size={13} className="text-white" />
             </div>
-            <span className="text-sm font-semibold text-gray-700">ExamGuard</span>
+            <span className="text-sm font-semibold text-gray-700">Exaon</span>
           </div>
-          <p className="text-xs text-gray-400">© {new Date().getFullYear()} ExamGuard. Built for academic integrity.</p>
+          <p className="text-xs text-gray-400">© {new Date().getFullYear()} Exaon. Built for academic integrity.</p>
         </div>
       </footer>
     </div>

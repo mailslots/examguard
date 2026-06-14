@@ -28,7 +28,7 @@ export function AdminSidebar() {
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
             <ShieldCheck size={18} className="text-white" />
           </div>
-          <span className="font-bold text-gray-900 text-lg">ExamGuard</span>
+          <span className="font-bold text-gray-900 text-lg">Exaon</span>
         </Link>
         <p className="text-xs text-gray-500 mt-0.5 ml-10">Admin Portal</p>
       </div>

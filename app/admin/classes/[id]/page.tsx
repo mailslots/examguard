@@ -3,8 +3,9 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
+import { CopyButton } from '@/components/ui/CopyButton'
 import { formatDate, formatDuration } from '@/lib/utils'
-import { ArrowLeft, Plus, Copy, Users, Clock, FileText } from 'lucide-react'
+import { ArrowLeft, Plus, Users, Clock, FileText, Link2 } from 'lucide-react'
 
 export default async function ClassDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -19,6 +20,9 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
     supabase.from('exams').select('*, questions(count)').eq('class_id', id).order('created_at', { ascending: false }),
   ])
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://exaon.vercel.app'
+  const inviteLink = `${siteUrl}/join/${cls.join_code}`
+
   return (
     <div className="p-8 max-w-5xl">
       <Link href="/admin/classes" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-6">
@@ -30,12 +34,22 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
           <h1 className="text-2xl font-bold text-gray-900">{cls.name}</h1>
           {cls.description && <p className="text-gray-500 mt-1">{cls.description}</p>}
         </div>
-        <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shrink-0">
-          <div>
-            <p className="text-xs text-gray-500">Join Code</p>
-            <p className="font-mono font-bold text-gray-900 text-lg">{cls.join_code}</p>
+        {/* Join code + invite link */}
+        <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 shrink-0 space-y-2">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs text-gray-500">Join Code</p>
+              <p className="font-mono font-bold text-gray-900 text-lg tracking-widest">{cls.join_code}</p>
+            </div>
+            <CopyButton text={cls.join_code} />
           </div>
-          <Copy size={16} className="text-gray-400 cursor-pointer hover:text-blue-600" />
+          <div className="border-t border-gray-100 pt-2 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs text-gray-500 mb-0.5">Student invite link</p>
+              <p className="text-xs text-gray-400 truncate max-w-[180px]">{inviteLink}</p>
+            </div>
+            <CopyButton text={inviteLink} label="Copy link" />
+          </div>
         </div>
       </div>
 
@@ -55,25 +69,40 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
               </Card>
             ) : exams.map(exam => {
               const qCount = Array.isArray(exam.questions) ? exam.questions[0]?.count ?? 0 : 0
+              const examLink = `${siteUrl}/exam/${exam.id}`
               return (
-                <Link key={exam.id} href={`/admin/exams/${exam.id}`}>
-                  <Card hover>
-                    <CardContent className="py-4">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="font-medium text-gray-900">{exam.title}</p>
-                          <div className="flex gap-3 text-xs text-gray-500 mt-1.5">
-                            <span className="flex items-center gap-1"><Clock size={11} /> {formatDuration(exam.duration_minutes)}</span>
-                            <span>{qCount} questions</span>
-                          </div>
+                <Card key={exam.id} hover>
+                  <CardContent className="py-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <Link href={`/admin/exams/${exam.id}`} className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900">{exam.title}</p>
+                        <div className="flex gap-3 text-xs text-gray-500 mt-1.5">
+                          <span className="flex items-center gap-1"><Clock size={11} /> {formatDuration(exam.duration_minutes)}</span>
+                          <span>{qCount} questions</span>
                         </div>
+                      </Link>
+                      <div className="flex items-center gap-2 shrink-0">
                         <Badge variant={exam.is_published ? 'success' : 'default'}>
                           {exam.is_published ? 'Live' : 'Draft'}
                         </Badge>
+                        {exam.is_published && (
+                          <CopyButton
+                            text={examLink}
+                            label=""
+                            className="text-gray-400 hover:text-blue-600"
+                          />
+                        )}
                       </div>
-                    </CardContent>
-                  </Card>
-                </Link>
+                    </div>
+                    {exam.is_published && (
+                      <div className="mt-3 flex items-center gap-1.5 bg-blue-50 rounded-lg px-3 py-1.5">
+                        <Link2 size={12} className="text-blue-400 shrink-0" />
+                        <p className="text-xs text-blue-500 truncate flex-1">{examLink}</p>
+                        <CopyButton text={examLink} label="Copy" className="shrink-0 text-blue-600" />
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               )
             })}
           </div>
@@ -85,7 +114,7 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
           <Card>
             {(!enrollments || enrollments.length === 0) ? (
               <CardContent className="text-center py-8 text-gray-400 text-sm">
-                No students yet. Share the join code <span className="font-mono font-bold text-gray-600">{cls.join_code}</span> with your class.
+                No students yet. Share the invite link above with your class.
               </CardContent>
             ) : (
               <div className="divide-y divide-gray-100">

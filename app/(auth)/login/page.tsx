@@ -1,16 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card, CardContent } from '@/components/ui/Card'
 import { GoogleButton } from '@/components/ui/GoogleButton'
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const next = searchParams.get('next') ?? ''
   const supabase = createClient()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -24,6 +26,8 @@ export default function LoginPage() {
     try {
       const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
       if (authError) { setError(authError.message); return }
+
+      if (next) { router.push(next); return }
 
       const { data: profile } = await supabase.from('profiles').select('role').single()
       if (profile?.role === 'admin') router.push('/admin')
@@ -41,7 +45,7 @@ export default function LoginPage() {
       </div>
       <Card>
         <CardContent className="py-6">
-          <GoogleButton label="Sign in with Google" />
+          <GoogleButton label="Sign in with Google" next={next} />
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px bg-gray-200" />
             <span className="text-xs text-gray-400 font-medium">or</span>
@@ -82,5 +86,13 @@ export default function LoginPage() {
         <Link href="/register" className="text-blue-600 font-medium hover:underline">Create one</Link>
       </p>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }
