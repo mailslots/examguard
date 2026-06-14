@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Exam, Question } from '@/types'
 import { QuestionEditor } from '@/components/admin/QuestionEditor'
@@ -14,7 +14,6 @@ import { formatDuration } from '@/lib/utils'
 
 export default function ExamEditorPage() {
   const params = useParams()
-  const router = useRouter()
   const supabase = createClient()
   const examId = params.id as string
 

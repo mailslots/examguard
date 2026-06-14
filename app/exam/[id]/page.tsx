@@ -27,7 +27,6 @@ export default function ExamPage() {
   const [attemptId, setAttemptId] = useState('')
   const [startedAt, setStartedAt] = useState('')
   const [answers, setAnswers] = useState<Record<string, Partial<Answer>>>({})
-  const [currentQ, setCurrentQ] = useState(0)
   const [warning, setWarning] = useState<{ count: number; type: CheatEventType } | null>(null)
   const [autoSubmitModal, setAutoSubmitModal] = useState(false)
   const submitting = useRef(false)
