@@ -88,6 +88,7 @@ export default function DemoPage() {
   const warningCount = useRef(0)
   const autoSubmitted = useRef(false)
   const startedAt = useRef(new Date().toISOString())
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const logViolation = useCallback((type: string) => {
     if (autoSubmitted.current) return
@@ -113,8 +114,16 @@ export default function DemoPage() {
     if (phase !== 'exam') return
 
     const onVisibility = () => { if (document.hidden) logViolation('tab_switch') }
-    const onBlur = () => logViolation('window_blur')
-    const onContextMenu = (e: MouseEvent) => { e.preventDefault(); logViolation('right_click') }
+    // 3-second grace period — ignores brief blur from mobile notifications
+    const onBlur = () => {
+      if (blurTimer.current) return
+      blurTimer.current = setTimeout(() => { blurTimer.current = null; logViolation('window_blur') }, 3000)
+    }
+    const onFocus = () => { if (blurTimer.current) { clearTimeout(blurTimer.current); blurTimer.current = null } }
+
+    // Block context menu always; only count as violation on desktop (not touch long-press)
+    const isTouchDevice = () => window.matchMedia('(pointer: coarse)').matches
+    const onContextMenu = (e: MouseEvent) => { e.preventDefault(); if (!isTouchDevice()) logViolation('right_click') }
     const onCopy = (e: ClipboardEvent) => { e.preventDefault(); logViolation('copy_attempt') }
     const onCut = (e: ClipboardEvent) => { e.preventDefault(); logViolation('copy_attempt') }
     const onKeyDown = (e: KeyboardEvent) => {
@@ -132,6 +141,7 @@ export default function DemoPage() {
 
     document.addEventListener('visibilitychange', onVisibility)
     window.addEventListener('blur', onBlur)
+    window.addEventListener('focus', onFocus)
     document.addEventListener('contextmenu', onContextMenu)
     document.addEventListener('copy', onCopy)
     document.addEventListener('cut', onCut)
@@ -139,8 +149,10 @@ export default function DemoPage() {
     document.addEventListener('fullscreenchange', onFullscreen)
 
     return () => {
+      if (blurTimer.current) clearTimeout(blurTimer.current)
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('blur', onBlur)
+      window.removeEventListener('focus', onFocus)
       document.removeEventListener('contextmenu', onContextMenu)
       document.removeEventListener('copy', onCopy)
       document.removeEventListener('cut', onCut)
@@ -294,7 +306,7 @@ export default function DemoPage() {
 
   /* ─── Exam ─── */
   return (
-    <div className="min-h-screen bg-gray-50 select-none" style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
+    <div className="min-h-screen bg-gray-50 select-none" style={{ userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}>
       {/* Top bar */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
